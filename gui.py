@@ -1,20 +1,16 @@
 import tkinter as tk
-from tkinter import N, S, E, W
-from tkinter import ttk
+from tkinter import E, W
 from tkinter import filedialog
-from tkinterdnd2 import DND_FILES, TkinterDnD
+from tkinter import ttk
 
 from PIL import ImageTk, Image
+from tkinterdnd2 import DND_FILES, TkinterDnD
 
+from utils import TITLE_FONT, SECONDARY_FONT
 from utils import get_resized_image, get_user_desktop, is_valid_image, generate_watermarked_image
 from utils import remove_curly_braces, invalid_messagebox
-from utils import TITLE_FONT
 
-ERROR_MESSAGE = """Couldn't open the image.
-
-It's either in an invalid format or currently in a directory that requires privilege.
-"""
-
+import os
 
 class GUI(ttk.Frame):
 
@@ -35,6 +31,8 @@ class GUI(ttk.Frame):
         self.end_result_image = None
 
         self.position = None
+
+        self.save_button = None
 
         self.target_drag_zone_wrapper = None
         self.target_drag_zone_wrapper_image = None
@@ -80,7 +78,7 @@ class GUI(ttk.Frame):
         watermark_image_entry = ttk.Entry(self, textvariable=self.watermark_image_path, state='readonly')
         watermark_image_entry.grid(row=2, column=1, columnspan=4, sticky=W + E, padx=5, pady=5)
 
-        position_label = ttk.Label(self, text='Choose position')
+        position_label = ttk.Label(self, text='Choose position', font=SECONDARY_FONT)
         position_label.grid(row=0, column=5, columnspan=5)
 
         self.position = tk.StringVar(value='bottom-right')
@@ -97,6 +95,10 @@ class GUI(ttk.Frame):
         full_rd_button.grid(row=2, column=7, sticky=W)
         top_right_rd_button.grid(row=1, column=8, sticky=W)
         bottom_right_rd_button.grid(row=2, column=8, sticky=W)
+
+        self.save_button = ttk.Button(self, text='Save image', command=self.save_end_result)
+        self.save_button.grid(row=1, column=12, columnspan=3, sticky=W+E)
+        self.save_button.state(['disabled'])
 
         target_title_label = ttk.Label(self, text='Target Image', font=TITLE_FONT)
         target_title_label.grid(row=3, column=0, columnspan=5)
@@ -247,8 +249,27 @@ class GUI(ttk.Frame):
         resized_image = get_resized_image(Image.open(path), self.img_width, self.img_height)
         return ImageTk.PhotoImage(resized_image)
 
+    def save_end_result(self):
+
+        dest = self.destiny_path.get()
+        filepath = self.target_image_path.get()
+        filename = os.path.basename(filepath)
+        new_filename = 'watermarked_' + filename
+        new_file_path = os.path.join(dest, new_filename)
+        self.end_result_image.save(new_file_path)
+
+
+
     def are_both_paths_set(self):
 
         t = self.target_image_path.get()
         w = self.watermark_image_path.get()
-        return is_valid_image(t) and is_valid_image(w)
+
+        both_paths_set = is_valid_image(t) and is_valid_image(w)
+
+        if both_paths_set:
+            self.save_button.state(['!disabled'])
+        else:
+            self.save_button.state(['disabled'])
+
+        return both_paths_set

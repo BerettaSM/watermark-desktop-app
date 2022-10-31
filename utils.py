@@ -6,6 +6,7 @@ from tkinter import messagebox
 
 WATERMARK_TO_TARGET_PROPORTION = .3
 TITLE_FONT = ('Arial', 30)
+SECONDARY_FONT = ('Arial', 16)
 ERROR_MESSAGE = """Couldn't open the image.
 
 It's either in an invalid format or currently in a directory that requires privilege.
@@ -40,7 +41,6 @@ def generate_watermarked_image(target: Image, watermark: Image, position: str):
     delta_width, delta_height = int(t_width - r_width), int(t_height - r_height)
 
     if position in ('full', 'center'):
-
         delta_width, delta_height = int(delta_width / 2), int(delta_height / 2)
 
     else:
