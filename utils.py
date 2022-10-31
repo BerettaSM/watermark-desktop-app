@@ -54,7 +54,10 @@ def generate_watermarked_image(target: Image, watermark: Image, position: str):
         elif position == 'top-right':
             delta_height = 0
 
-    target_image.paste(resized_watermark, (delta_width, delta_height))
+    try:
+        target_image.paste(resized_watermark, (delta_width, delta_height), resized_watermark)
+    except ValueError:
+        target_image.paste(resized_watermark, (delta_width, delta_height))
 
     return target_image
 
