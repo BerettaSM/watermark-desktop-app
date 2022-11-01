@@ -35,10 +35,10 @@ def get_resized_image(image: Image, max_width=IMG_WIDTH, max_height=IMG_HEIGHT):
 
 def generate_watermarked_image(target: Image,
                                watermark: Image,
-                               position: str,
+                               watermark_position: str,
                                miniature: bool = False):
 
-    position = Position(position)
+    position = Position(watermark_position)
     target_image = target.copy()
     t_width, t_height = target.size
 
@@ -54,6 +54,7 @@ def generate_watermarked_image(target: Image,
 
     r_width, r_height = resized_watermark.size
 
+    # delta_width and delta_height position the image on bottom right, by default
     delta_width, delta_height = int(t_width - r_width), int(t_height - r_height)
 
     if position == Position.CENTER:

@@ -11,6 +11,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# pyinstaller.exe --onefile --icon=drop.ico --collect-all tkinterdnd2 main.pyw
-# compile with pyinstaller
