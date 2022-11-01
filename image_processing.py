@@ -1,6 +1,6 @@
-from PIL import Image, UnidentifiedImageError
 from enum import Enum
 
+from PIL import Image, UnidentifiedImageError
 
 SIZE_PROPORTION = .3
 IMG_HEIGHT = 150
@@ -94,6 +94,6 @@ class Position(Enum):
 
     CENTER = 'center'
     TOP_LEFT = 'top-left'
-    BOTTOM_LEFT = 'bottom-left'
+    BOTTOM_LEFT = 'bot-left'
     TOP_RIGHT = 'top-right'
-    BOTTOM_RIGHT = 'bottom-right'
+    BOTTOM_RIGHT = 'bot-right'
