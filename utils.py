@@ -4,8 +4,8 @@ import re
 from tkinter import messagebox
 
 
-TITLE_FONT = ('Arial', 30)
-SECONDARY_FONT = ('Arial', 16)
+TITLE_FONT = ('Arial', 18)
+SECONDARY_FONT = ('Arial', 14)
 
 
 def get_user_desktop():

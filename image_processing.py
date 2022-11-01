@@ -3,16 +3,8 @@ from enum import Enum
 
 
 SIZE_PROPORTION = .3
-IMG_HEIGHT = 300
-IMG_WIDTH = 500
-
-
-def is_valid_image(path):
-    try:
-        Image.open(path)
-    except (FileNotFoundError, UnidentifiedImageError, PermissionError):
-        return False
-    return True
+IMG_HEIGHT = 150
+IMG_WIDTH = 250
 
 
 def get_resized_image(image: Image, max_width=IMG_WIDTH, max_height=IMG_HEIGHT):
@@ -85,6 +77,17 @@ def generate_watermarked_image(target: Image,
         target_image.paste(resized_watermark, (delta_width, delta_height))
 
     return target_image
+
+
+def is_valid_image(path):
+
+    try:
+        Image.open(path)
+
+    except (FileNotFoundError, UnidentifiedImageError, PermissionError):
+        return False
+
+    return True
 
 
 class Position(Enum):
