@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 
 from PIL import Image, UnidentifiedImageError
@@ -5,6 +6,34 @@ from PIL import Image, UnidentifiedImageError
 SIZE_PROPORTION = .3
 IMG_HEIGHT = 150
 IMG_WIDTH = 250
+
+
+def folder_contains_images(path: str = '.'):
+
+    path = os.path.abspath(path)
+
+    if not os.path.isdir(path):
+        return False
+
+    files = os.listdir(path)
+
+    if not files:
+        return False
+
+    for file in files:
+
+        if '.' not in file:
+            # Probably a directory or irrelevant file
+            continue
+
+        full_file_path = os.path.join(path, file)
+
+        is_an_image = is_valid_image(full_file_path)
+
+        if is_an_image:
+            return True
+
+    return False
 
 
 def get_resized_image(image: Image, max_width=IMG_WIDTH, max_height=IMG_HEIGHT):
