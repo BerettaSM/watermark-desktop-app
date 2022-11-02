@@ -1,7 +1,7 @@
 import io
 import os
 import tkinter as tk
-from tkinter import N, W, S, E
+from tkinter import N, W, S, E, HORIZONTAL
 from tkinter import filedialog
 from tkinter import ttk
 
@@ -12,7 +12,7 @@ from image_processing import IMG_WIDTH, IMG_HEIGHT
 from image_processing import get_resized_image, generate_watermarked_image, Position
 from image_processing import is_valid_image, folder_contains_images
 from images import IMAGE_BG, IMAGE_FG, WATERMARK_ICON, TRANSPARENT
-from utils import get_user_desktop, remove_curly_braces, invalid_messagebox
+from utils import get_user_desktop, remove_curly_braces, invalid_image_messagebox, invalid_dir_messagebox
 
 FONT = 'Playball'
 TITLE_FONT = (FONT, 24)
@@ -38,13 +38,21 @@ class GUI(ttk.Frame):
         self.grid(row=0, column=0)
         self.configure(padding="40")
 
+        self.style = None
+
+        self.loading_bar = None
         self.batch_mode = None
 
         self.destiny_path: tk.StringVar | None = None
         self.target_path: tk.StringVar | None = None
         self.watermark_image_path: tk.StringVar | None = None
 
+        self.target_image_entry = None
+        self.watermark_image_entry = None
+
+        self.destiny_button = None
         self.target_image_button = None
+        self.watermark_image_button = None
 
         self.target_title_label = None
         self.watermark_title_label = None
@@ -84,34 +92,19 @@ class GUI(ttk.Frame):
 
     def create_widgets(self):
 
-        s = ttk.Style()
-        s.theme_use('clam')
-        s.configure('TFrame', background=LIGHT_BLUE)
-        s.configure('TEntry', foreground=DARK_BLUE, font=SECONDARY_FONT)
-        s.configure('TButton', borderwith=2, font=SECONDARY_FONT, width=10)
-        s.map('C.TButton',
-              foreground=[('disabled', 'light gray'), ('!active', DARK_BLUE),
-                          ('pressed', LIGHT_BLUE), ('active', MAIN_BLUE)],
-              background=[('disabled', LIGHTER_BLUE), ('!active', LIGHT_BLUE),
-                          ('pressed', DARK_BLUE), ('active', LIGHT_BLUE)]
-              )
-        s.map("C.TRadiobutton",
-              foreground=[('!active', DARK_BLUE), ('pressed', MAIN_BLUE), ('active', MAIN_BLUE)],
-              background=[('!active', LIGHT_BLUE), ('pressed', LIGHT_BLUE), ('active', LIGHT_BLUE)]
-              )
-        s.map("C.TCheckbutton",
-              foreground=[('!active', DARK_BLUE), ('pressed', MAIN_BLUE), ('active', MAIN_BLUE)],
-              background=[('!active', LIGHT_BLUE), ('pressed', LIGHT_BLUE), ('active', LIGHT_BLUE)]
-              )
+        self.reset_styling()
 
+        self.loading_bar = ttk.Progressbar(self, orient=HORIZONTAL, length=200, mode='determinate')
+        self.loading_bar.grid(row=0, column=0, columnspan=9, sticky=N + E + S + W, padx=4)
+        self.loading_bar.grid_remove()
         self.batch_mode = tk.BooleanVar(value=False)
         batch_mode_check = ttk.Checkbutton(self, text='Batch mode', variable=self.batch_mode,
                                            onvalue=True, offvalue=False, style='C.TCheckbutton')
-        batch_mode_check.grid(row=0, column=10, columnspan=1)
+        batch_mode_check.grid(row=0, column=10)
 
-        destiny_button = ttk.Button(self, text='Choose destiny', style='C.TButton',
-                                    command=self.destiny_folder_browse_event, width=20)
-        destiny_button.grid(row=1, column=0, sticky=W + E, padx=5, pady=5)
+        self.destiny_button = ttk.Button(self, text='Choose destiny', style='C.TButton',
+                                         command=self.destiny_folder_browse_event, width=20)
+        self.destiny_button.grid(row=1, column=0, sticky=W + E, padx=5, pady=5)
 
         self.destiny_path = tk.StringVar(value=get_user_desktop())
         destiny_entry = ttk.Entry(self, textvariable=self.destiny_path, state='readonly', takefocus=0, width=55)
@@ -122,16 +115,17 @@ class GUI(ttk.Frame):
         self.target_image_button.grid(row=2, column=0, sticky=W + E, padx=5, pady=5)
 
         self.target_path = tk.StringVar(value='Choose a target image')
-        target_image_entry = ttk.Entry(self, textvariable=self.target_path, state='readonly', takefocus=0)
-        target_image_entry.grid(row=2, column=1, columnspan=10, sticky=N + W + S + E, padx=5, pady=5)
+        self.target_image_entry = ttk.Entry(self, textvariable=self.target_path, state='readonly', takefocus=0)
+        self.target_image_entry.grid(row=2, column=1, columnspan=10, sticky=N + W + S + E, padx=5, pady=5)
 
-        watermark_image_button = ttk.Button(self, text='Choose watermark', style='C.TButton',
-                                            command=self.watermark_img_browse_event)
-        watermark_image_button.grid(row=3, column=0, sticky=W + E, padx=5, pady=5)
+        self.watermark_image_button = ttk.Button(self, text='Choose watermark', style='C.TButton',
+                                                 command=self.watermark_img_browse_event)
+        self.watermark_image_button.grid(row=3, column=0, sticky=W + E, padx=5, pady=5)
 
         self.watermark_image_path = tk.StringVar(value='Choose a watermark image')
-        watermark_image_entry = ttk.Entry(self, textvariable=self.watermark_image_path, state='readonly', takefocus=0)
-        watermark_image_entry.grid(row=3, column=1, columnspan=10, sticky=N + W + S + E, padx=5, pady=5)
+        self.watermark_image_entry = ttk.Entry(self, textvariable=self.watermark_image_path,
+                                               state='readonly', takefocus=0)
+        self.watermark_image_entry.grid(row=3, column=1, columnspan=10, sticky=N + W + S + E, padx=5, pady=5)
 
         self.target_title_label = ttk.Label(self, text='Target Image',
                                             font=TITLE_FONT, background=LIGHT_BLUE, foreground=DARK_BLUE)
@@ -210,31 +204,50 @@ class GUI(ttk.Frame):
     def register_event_listeners(self):
 
         self.target_drag_zone.drop_target_register(DND_FILES)
-        self.target_drag_zone.dnd_bind('<<Drop>>', self.target_img_drag_event)
+        self.target_drag_zone.dnd_bind('<<Drop>>', self.target_drag_event)
         self.watermark_drag_zone.drop_target_register(DND_FILES)
         self.watermark_drag_zone.dnd_bind('<<Drop>>', self.watermark_img_drag_event)
+
+        self.target_image_entry.drop_target_register(DND_FILES)
+        self.target_image_entry.dnd_bind('<<Drop>>', self.target_drag_event)
+        self.watermark_image_entry.drop_target_register(DND_FILES)
+        self.watermark_image_entry.dnd_bind('<<Drop>>', self.watermark_img_drag_event)
 
         self.wm_position.trace('w', self.validate_state)
         self.should_miniaturize.trace('w', self.validate_state)
 
         self.batch_mode.trace('w', self.switch_batch_mode_layout)
 
-    def target_img_drag_event(self, event):
+    def target_drag_event(self, event):
 
         path = remove_curly_braces(event.data)
 
-        if not is_valid_image(path):
-            invalid_messagebox()
-            return
+        batch = self.batch_mode.get()
 
-        self.target_file_load(path)
+        if batch:
+
+            if not os.path.isdir(path):
+                invalid_dir_messagebox()
+                return
+
+            self.target_path.set(path)
+
+            self.validate_paths()
+
+        else:
+
+            if not is_valid_image(path):
+                invalid_image_messagebox()
+                return
+
+            self.target_file_load(path)
 
     def watermark_img_drag_event(self, event):
 
         path = remove_curly_braces(event.data)
 
         if not is_valid_image(path):
-            invalid_messagebox()
+            invalid_image_messagebox()
             return
 
         self.watermark_img_load(path)
@@ -269,7 +282,7 @@ class GUI(ttk.Frame):
                 return
 
             if not is_valid_image(path.name):
-                invalid_messagebox()
+                invalid_image_messagebox()
                 return
 
             self.target_file_load(path.name)
@@ -282,7 +295,7 @@ class GUI(ttk.Frame):
             return
 
         if not is_valid_image(path.name):
-            invalid_messagebox()
+            invalid_image_messagebox()
             return
 
         self.watermark_img_load(path.name)
@@ -365,11 +378,15 @@ class GUI(ttk.Frame):
 
         batch = self.batch_mode.get()
 
+        is_valid_watermark = is_valid_image(watermark)
+
         if batch:
-            both_paths_set = folder_contains_images(target) and is_valid_image(watermark)
+            is_valid_target = folder_contains_images(target)
 
         else:
-            both_paths_set = is_valid_image(target) and is_valid_image(watermark)
+            is_valid_target = is_valid_image(target)
+
+        both_paths_set = is_valid_watermark and is_valid_target
 
         if both_paths_set:
             self.save_button.state(['!disabled'])
@@ -384,7 +401,11 @@ class GUI(ttk.Frame):
             self.save_button.state(['disabled'])
 
             if batch:
-                updated_button_inner_text = 'No valid images inside target folder'
+                if is_valid_watermark:
+                    updated_button_inner_text = 'No valid images inside target folder'
+
+                else:
+                    updated_button_inner_text = 'No watermark selected'
 
             else:
                 updated_button_inner_text = 'No valid images selected'
@@ -394,6 +415,17 @@ class GUI(ttk.Frame):
         return both_paths_set
 
     def generate_and_save_batch_event(self):
+
+        # Disable buttons
+        self.destiny_button.state(['disabled'])
+        self.target_image_button.state(['disabled'])
+        self.watermark_image_button.state(['disabled'])
+        self.save_button.state(['disabled'])
+
+        self.save_button.configure(text='In progress...')
+
+        # Enable loading bar
+        self.loading_bar.grid()
 
         target_folder = self.target_path.get()
         dump_folder = os.path.join(self.destiny_path.get(), 'watermarked images')
@@ -405,7 +437,16 @@ class GUI(ttk.Frame):
         if not os.path.isdir(dump_folder):
             os.makedirs(dump_folder)
 
+        loading_bar_increment = 100 / len(os.listdir(target_folder))
+
         for file in os.listdir(target_folder):
+
+            self.loading_bar['value'] += loading_bar_increment
+
+            self.save_button.configure(text=f'In progress: {self.loading_bar.cget("value"):.1f}%')
+
+            # Force update gui widgets
+            self.master.update_idletasks()
 
             full_file_path = os.path.join(target_folder, file)
 
@@ -423,6 +464,20 @@ class GUI(ttk.Frame):
             new_file_path = os.path.join(dump_folder, new_filename)
 
             watermarked_image.save(new_file_path)
+
+        # Reset progress bar
+        self.loading_bar.stop()
+
+        # Re-enable buttons
+        self.destiny_button.state(['!disabled'])
+        self.target_image_button.state(['!disabled'])
+        self.watermark_image_button.state(['!disabled'])
+        self.save_button.state(['!disabled'])
+
+        self.save_button.configure(text='Generate/save batch')
+
+        # Hide loading bar
+        self.loading_bar.grid_remove()
 
     def switch_batch_mode_layout(self, *args):
 
@@ -489,3 +544,44 @@ class GUI(ttk.Frame):
             self.miniature_check.grid(row=15)
             self.save_button.grid(row=16)
             self.save_button.configure(command=self.save_single_image_event)
+
+    def switch_buttons_state(self):
+
+        is_save_button_enabled = self.save_button.instate(['!disabled'])
+
+        if is_save_button_enabled:
+            self.destiny_button.state(['!disabled'])
+            self.target_image_button.state(['!disabled'])
+            self.watermark_image_button.state(['!disabled'])
+            self.save_button.state(['!disabled'])
+
+        else:
+            self.destiny_button.state(['disabled'])
+            self.target_image_button.state(['disabled'])
+            self.watermark_image_button.state(['disabled'])
+            self.save_button.state(['disabled'])
+
+    def reset_styling(self):
+
+        self.style = ttk.Style()
+
+        self.style.theme_use('clam')
+        self.style.configure('TFrame', background=LIGHT_BLUE)
+        self.style.configure('Horizontal.TProgressbar', background=MAIN_BLUE, darkcolor=DARK_BLUE,
+                             bordercolor=LIGHT_BLUE, lightcolor=LIGHTER_BLUE)
+        self.style.configure('TEntry', foreground=DARK_BLUE, font=SECONDARY_FONT)
+        self.style.configure('TButton', borderwith=2, font=SECONDARY_FONT, width=10)
+        self.style.map('C.TButton',
+                       foreground=[('disabled', 'gray'), ('!active', DARK_BLUE),
+                                   ('pressed', LIGHT_BLUE), ('active', MAIN_BLUE)],
+                       background=[('disabled', LIGHTER_BLUE), ('!active', LIGHT_BLUE),
+                                   ('pressed', DARK_BLUE), ('active', LIGHT_BLUE)]
+                       )
+        self.style.map("C.TRadiobutton",
+                       foreground=[('!active', DARK_BLUE), ('pressed', MAIN_BLUE), ('active', MAIN_BLUE)],
+                       background=[('!active', LIGHT_BLUE), ('pressed', LIGHT_BLUE), ('active', LIGHT_BLUE)]
+                       )
+        self.style.map("C.TCheckbutton",
+                       foreground=[('!active', DARK_BLUE), ('pressed', MAIN_BLUE), ('active', MAIN_BLUE)],
+                       background=[('!active', LIGHT_BLUE), ('pressed', LIGHT_BLUE), ('active', LIGHT_BLUE)]
+                       )
