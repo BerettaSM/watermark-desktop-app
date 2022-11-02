@@ -30,7 +30,11 @@ def invalid_dir_messagebox():
     messagebox.showerror(title='Error', message='Not a valid directory.')
 
 
-def remove_curly_braces(path):
+def processed_images_messagebox(n: int):
+    messagebox.showinfo(title='Done', message=f'Result: {n} images converted.')
+
+
+def remove_curly_braces(path: str):
 
     regex = re.compile(r'[{}]')
 

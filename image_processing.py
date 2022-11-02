@@ -1,7 +1,8 @@
+import io
 import os
 from enum import Enum
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageTk, UnidentifiedImageError
 
 SIZE_PROPORTION = .3
 IMG_HEIGHT = 150
@@ -62,6 +63,22 @@ def get_resized_image(image: Image, max_width=IMG_WIDTH, max_height=IMG_HEIGHT):
     return resized_image
 
 
+def get_resized_photo_image(path: str = None, bytes_: bytes = None):
+
+    if path is None and bytes_ is None:
+        raise ValueError('path or bytes_must be provided')
+
+    if path:
+        # Reading an image from a path string
+        resized_image = get_resized_image(Image.open(path))
+
+    else:
+        # Reading an image from images.py, which is set in bytes
+        resized_image = get_resized_image(Image.open(io.BytesIO(bytes_)))
+
+    return ImageTk.PhotoImage(resized_image)
+
+
 def generate_watermarked_image(target: Image,
                                watermark: Image,
                                watermark_position: str,
@@ -109,7 +126,7 @@ def generate_watermarked_image(target: Image,
     return target_image
 
 
-def is_valid_image(path):
+def is_valid_image(path: str):
 
     try:
         Image.open(path)

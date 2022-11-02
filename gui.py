@@ -9,14 +9,16 @@ from PIL import ImageTk, Image
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from image_processing import IMG_WIDTH, IMG_HEIGHT
-from image_processing import get_resized_image, generate_watermarked_image, Position
+from image_processing import get_resized_image, get_resized_photo_image, generate_watermarked_image, Position
 from image_processing import is_valid_image, folder_contains_images
 from images import IMAGE_BG, IMAGE_FG, WATERMARK_ICON, TRANSPARENT
-from utils import get_user_desktop, remove_curly_braces, invalid_image_messagebox, invalid_dir_messagebox
+from utils import get_user_desktop, remove_curly_braces
+from utils import invalid_image_messagebox, invalid_dir_messagebox, processed_images_messagebox
 
 FONT = 'Playball'
 TITLE_FONT = (FONT, 24)
 SECONDARY_FONT = (FONT, 14)
+OPTION_FONT = (FONT, 12)
 LIGHTER_BLUE = '#E1F0FA'
 LIGHT_BLUE = '#D0EAFB'
 MAIN_BLUE = '#1077BC'
@@ -43,9 +45,9 @@ class GUI(ttk.Frame):
         self.loading_bar = None
         self.batch_mode = None
 
-        self.destiny_path: tk.StringVar | None = None
-        self.target_path: tk.StringVar | None = None
-        self.watermark_image_path: tk.StringVar | None = None
+        self.destiny_path = None
+        self.target_path = None
+        self.watermark_image_path = None
 
         self.target_image_entry = None
         self.watermark_image_entry = None
@@ -73,6 +75,8 @@ class GUI(ttk.Frame):
         self.preview_zone = None
         self.preview_zone_background = None
 
+        self.options_panel = None
+
         self.position_label = None
         self.top_left_rd_button = None
         self.top_right_rd_button = None
@@ -87,22 +91,17 @@ class GUI(ttk.Frame):
         self.miniature_check = None
         self.save_button = None
 
-        self.create_widgets()
-        self.register_event_listeners()
-
     def create_widgets(self):
 
-        self.reset_styling()
-
         self.loading_bar = ttk.Progressbar(self, orient=HORIZONTAL, length=200, mode='determinate')
-        self.loading_bar.grid(row=0, column=0, columnspan=9, sticky=N + E + S + W, padx=4)
+        self.loading_bar.grid(row=0, column=0, columnspan=10, sticky=N + E + S + W, padx=4, ipady=5)
         self.loading_bar.grid_remove()
         self.batch_mode = tk.BooleanVar(value=False)
         batch_mode_check = ttk.Checkbutton(self, text='Batch mode', variable=self.batch_mode,
-                                           onvalue=True, offvalue=False, style='C.TCheckbutton')
-        batch_mode_check.grid(row=0, column=10)
+                                           onvalue=True, offvalue=False, style='TCheckbutton')
+        batch_mode_check.grid(row=0, column=10, sticky=E, padx=4, ipady=5)
 
-        self.destiny_button = ttk.Button(self, text='Choose destiny', style='C.TButton',
+        self.destiny_button = ttk.Button(self, text='Choose destiny', style='TButton',
                                          command=self.destiny_folder_browse_event, width=20)
         self.destiny_button.grid(row=1, column=0, sticky=W + E, padx=5, pady=5)
 
@@ -110,7 +109,7 @@ class GUI(ttk.Frame):
         destiny_entry = ttk.Entry(self, textvariable=self.destiny_path, state='readonly', takefocus=0, width=55)
         destiny_entry.grid(row=1, column=1, columnspan=10, sticky=N + W + S + E, padx=5, pady=5)
 
-        self.target_image_button = ttk.Button(self, text='Choose target image', style='C.TButton',
+        self.target_image_button = ttk.Button(self, text='Choose target image', style='TButton',
                                               command=self.target_browse_event)
         self.target_image_button.grid(row=2, column=0, sticky=W + E, padx=5, pady=5)
 
@@ -118,7 +117,7 @@ class GUI(ttk.Frame):
         self.target_image_entry = ttk.Entry(self, textvariable=self.target_path, state='readonly', takefocus=0)
         self.target_image_entry.grid(row=2, column=1, columnspan=10, sticky=N + W + S + E, padx=5, pady=5)
 
-        self.watermark_image_button = ttk.Button(self, text='Choose watermark', style='C.TButton',
+        self.watermark_image_button = ttk.Button(self, text='Choose watermark', style='TButton',
                                                  command=self.watermark_img_browse_event)
         self.watermark_image_button.grid(row=3, column=0, sticky=W + E, padx=5, pady=5)
 
@@ -144,7 +143,7 @@ class GUI(ttk.Frame):
         self.target_drag_zone_wrapper.configure(width=270, height=170)
         self.target_drag_zone_wrapper.grid(row=5, column=0, columnspan=5, rowspan=5, padx=7)
 
-        self.target_drag_zone_background = self.get_resized_image(bytes_=IMAGE_FG)
+        self.target_drag_zone_background = get_resized_photo_image(bytes_=IMAGE_FG)
         self.target_drag_zone = tk.Label(self.target_drag_zone_wrapper, image=self.target_drag_zone_background)
         self.target_drag_zone.configure(width=IMG_WIDTH, height=IMG_HEIGHT, background=LIGHT_BLUE)
         self.target_drag_zone.grid(row=0, column=0, pady=7, padx=7)
@@ -154,7 +153,7 @@ class GUI(ttk.Frame):
         self.watermark_drag_zone_wrapper.configure(width=270, height=170)
         self.watermark_drag_zone_wrapper.grid(row=5, column=6, columnspan=5, rowspan=5, padx=7)
 
-        self.watermark_drag_zone_background = self.get_resized_image(bytes_=IMAGE_FG)
+        self.watermark_drag_zone_background = get_resized_photo_image(bytes_=IMAGE_FG)
         self.watermark_drag_zone = tk.Label(self.watermark_drag_zone_wrapper, image=self.watermark_drag_zone_background)
         self.watermark_drag_zone.configure(width=IMG_WIDTH, height=IMG_HEIGHT, background=LIGHT_BLUE)
         self.watermark_drag_zone.grid(row=0, column=0, pady=7, padx=7)
@@ -164,42 +163,54 @@ class GUI(ttk.Frame):
         self.preview_zone_wrapper.configure(width=270, height=170)
         self.preview_zone_wrapper.grid(row=12, column=0, columnspan=5, rowspan=5, padx=7)
 
-        self.preview_zone_background = self.get_resized_image(bytes_=TRANSPARENT)
+        self.preview_zone_background = get_resized_photo_image(bytes_=TRANSPARENT)
         self.preview_zone = tk.Label(self.preview_zone_wrapper, image=self.preview_zone_background)
         self.preview_zone.configure(width=IMG_WIDTH, height=IMG_HEIGHT, background=LIGHT_BLUE)
         self.preview_zone.grid(row=0, column=0, pady=7, padx=7)
 
         self.position_label = ttk.Label(self, text='Choose position',
-                                        font=SECONDARY_FONT, background=LIGHT_BLUE, foreground=DARK_BLUE)
+                                        font=TITLE_FONT, background=LIGHT_BLUE, foreground=DARK_BLUE)
         self.position_label.grid(row=11, column=6, columnspan=5)
 
-        self.wm_position = tk.StringVar(value=Position.BOTTOM_RIGHT.value)
-        self.top_left_rd_button = ttk.Radiobutton(self, text=Position.TOP_LEFT.value, variable=self.wm_position,
-                                                  value=Position.TOP_LEFT.value, style='C.TRadiobutton')
-        self.top_right_rd_button = ttk.Radiobutton(self, text=Position.TOP_RIGHT.value, variable=self.wm_position,
-                                                   value=Position.TOP_RIGHT.value, style='C.TRadiobutton')
-        self.center_rd_button = ttk.Radiobutton(self, text=Position.CENTER.value, variable=self.wm_position,
-                                                value=Position.CENTER.value, style='C.TRadiobutton')
-        self.bot_left_rd_button = ttk.Radiobutton(self, text=Position.BOTTOM_LEFT.value, variable=self.wm_position,
-                                                  value=Position.BOTTOM_LEFT.value, style='C.TRadiobutton')
-        self.bot_right_rd_button = ttk.Radiobutton(self, text=Position.BOTTOM_RIGHT.value, variable=self.wm_position,
-                                                   value=Position.BOTTOM_RIGHT.value, style='C.TRadiobutton')
+        self.options_panel = ttk.Frame(self)
+        self.options_panel.grid(row=12, column=6, columnspan=5, rowspan=5, sticky=N + W + E + S, padx=7)
+        self.options_panel.grid_rowconfigure(0, weight=1)
 
-        self.top_left_rd_button.grid(row=12, column=6, sticky=W)
-        self.bot_left_rd_button.grid(row=13, column=6, columnspan=2, sticky=W)
-        self.center_rd_button.grid(row=12, column=7)
-        self.top_right_rd_button.grid(row=12, column=8, sticky=E)
-        self.bot_right_rd_button.grid(row=13, column=8, sticky=E)
+        self.wm_position = tk.StringVar(value=Position.BOTTOM_RIGHT.value)
+        self.top_left_rd_button = ttk.Radiobutton(self.options_panel, text=Position.TOP_LEFT.value,
+                                                  variable=self.wm_position, value=Position.TOP_LEFT.value,
+                                                  style='TRadiobutton')
+        self.top_right_rd_button = ttk.Radiobutton(self.options_panel, text=Position.TOP_RIGHT.value,
+                                                   variable=self.wm_position, value=Position.TOP_RIGHT.value,
+                                                   style='TRadiobutton')
+        self.center_rd_button = ttk.Radiobutton(self.options_panel, text=Position.CENTER.value,
+                                                variable=self.wm_position, value=Position.CENTER.value,
+                                                style='TRadiobutton')
+        self.bot_left_rd_button = ttk.Radiobutton(self.options_panel, text=Position.BOTTOM_LEFT.value,
+                                                  variable=self.wm_position, value=Position.BOTTOM_LEFT.value,
+                                                  style='TRadiobutton')
+        self.bot_right_rd_button = ttk.Radiobutton(self.options_panel, text=Position.BOTTOM_RIGHT.value,
+                                                   variable=self.wm_position, value=Position.BOTTOM_RIGHT.value,
+                                                   style='TRadiobutton')
+
+        self.top_left_rd_button.grid(row=0, column=0, sticky=N+W)
+        self.bot_left_rd_button.grid(row=1, column=0,  sticky=N+W)
+        self.center_rd_button.grid(row=0, column=2, sticky=S)
+        self.top_right_rd_button.grid(row=0, column=4, sticky=N+E)
+        self.bot_right_rd_button.grid(row=1, column=4, sticky=N+E)
 
         self.should_miniaturize = tk.BooleanVar(value=False)
-        self.miniature_check = ttk.Checkbutton(self, text='Miniaturize watermark', variable=self.should_miniaturize,
-                                               onvalue=True, offvalue=False, style='C.TCheckbutton')
-        self.miniature_check.grid(row=15, column=6, columnspan=5)
+        self.miniature_check = ttk.Checkbutton(self.options_panel, text='Miniaturize watermark',
+                                               onvalue=True, offvalue=False,
+                                               variable=self.should_miniaturize, style='TCheckbutton')
+        self.miniature_check.grid(row=3, column=0, columnspan=5, ipady=20)
 
-        self.save_button = ttk.Button(self, text='No valid images selected', style='C.TButton',
-                                      command=self.save_single_image_event)
-        self.save_button.grid(row=16, column=6, columnspan=5, sticky=W + E)
+        self.save_button = ttk.Button(self.options_panel, text='No valid images selected', style='TButton',
+                                      command=self.save_single_image_event, width=21)
+        self.save_button.grid(row=4, column=0, columnspan=5, sticky=W+E+S)
         self.save_button.state(['disabled'])
+
+        self.set_up_styling()
 
     def register_event_listeners(self):
 
@@ -303,7 +314,7 @@ class GUI(ttk.Frame):
     def target_file_load(self, path):
 
         self.target_path.set(path)
-        self.target_drag_zone_background = self.get_resized_image(path)
+        self.target_drag_zone_background = get_resized_photo_image(path)
         self.target_drag_zone.configure(image=self.target_drag_zone_background)
 
         self.validate_state()
@@ -311,7 +322,7 @@ class GUI(ttk.Frame):
     def watermark_img_load(self, path):
 
         self.watermark_image_path.set(path)
-        self.watermark_drag_zone_background = self.get_resized_image(path)
+        self.watermark_drag_zone_background = get_resized_photo_image(path)
         self.watermark_drag_zone.configure(image=self.watermark_drag_zone_background)
 
         self.validate_state()
@@ -343,22 +354,6 @@ class GUI(ttk.Frame):
         resized_image = get_resized_image(self.end_result)
         self.preview_zone_background = ImageTk.PhotoImage(resized_image)
         self.preview_zone.configure(image=self.preview_zone_background)
-
-    @staticmethod
-    def get_resized_image(path: str = None, bytes_: bytes = None) -> ImageTk.PhotoImage:
-
-        if path is None and bytes_ is None:
-            raise ValueError('path or bytes_must be provided')
-
-        if path:
-            # Reading an image from a path string
-            resized_image = get_resized_image(Image.open(path))
-
-        else:
-            # Reading an image from images.py, which is set in bytes
-            resized_image = get_resized_image(Image.open(io.BytesIO(bytes_)))
-
-        return ImageTk.PhotoImage(resized_image)
 
     def save_single_image_event(self):
 
@@ -439,6 +434,8 @@ class GUI(ttk.Frame):
 
         loading_bar_increment = 100 / len(os.listdir(target_folder))
 
+        processed_images = 0
+
         for file in os.listdir(target_folder):
 
             self.loading_bar['value'] += loading_bar_increment
@@ -465,6 +462,8 @@ class GUI(ttk.Frame):
 
             watermarked_image.save(new_file_path)
 
+            processed_images += 1
+
         # Reset progress bar
         self.loading_bar.stop()
 
@@ -478,6 +477,8 @@ class GUI(ttk.Frame):
 
         # Hide loading bar
         self.loading_bar.grid_remove()
+
+        processed_images_messagebox(processed_images)
 
     def switch_batch_mode_layout(self, *args):
 
@@ -503,14 +504,7 @@ class GUI(ttk.Frame):
             self.watermark_drag_zone_wrapper.grid(row=5, column=0)
 
             self.position_label.grid(row=4, column=6)
-            self.top_left_rd_button.grid(row=5, column=6)
-            self.bot_left_rd_button.grid(row=6, column=6)
-            self.center_rd_button.grid(row=5, column=7)
-            self.top_right_rd_button.grid(row=5, column=8)
-            self.bot_right_rd_button.grid(row=6, column=8)
-
-            self.miniature_check.grid(row=8)
-            self.save_button.grid(row=9)
+            self.options_panel.grid(row=5, column=6)
             self.save_button.configure(command=self.generate_and_save_batch_event)
 
         else:
@@ -523,26 +517,19 @@ class GUI(ttk.Frame):
 
             self.target_drag_zone_wrapper.grid()
             self.target_drag_zone.grid()
-            self.target_drag_zone_background = self.get_resized_image(bytes_=IMAGE_FG)
+            self.target_drag_zone_background = get_resized_photo_image(bytes_=IMAGE_FG)
             self.target_drag_zone.configure(image=self.target_drag_zone_background)
 
             self.preview_zone_wrapper.grid()
             self.preview_zone.grid()
-            self.preview_zone_background = self.get_resized_image(bytes_=TRANSPARENT)
+            self.preview_zone_background = get_resized_photo_image(bytes_=TRANSPARENT)
             self.preview_zone.configure(image=self.preview_zone_background)
 
             self.watermark_title_label.grid(row=4, column=6)
             self.watermark_drag_zone_wrapper.grid(row=5, column=6)
 
             self.position_label.grid(row=11, column=6)
-            self.top_left_rd_button.grid(row=12, column=6)
-            self.bot_left_rd_button.grid(row=13, column=6)
-            self.center_rd_button.grid(row=12, column=7)
-            self.top_right_rd_button.grid(row=12, column=8)
-            self.bot_right_rd_button.grid(row=13, column=8)
-
-            self.miniature_check.grid(row=15)
-            self.save_button.grid(row=16)
+            self.options_panel.grid(row=12, column=6)
             self.save_button.configure(command=self.save_single_image_event)
 
     def switch_buttons_state(self):
@@ -561,7 +548,7 @@ class GUI(ttk.Frame):
             self.watermark_image_button.state(['disabled'])
             self.save_button.state(['disabled'])
 
-    def reset_styling(self):
+    def set_up_styling(self):
 
         self.style = ttk.Style()
 
@@ -571,17 +558,19 @@ class GUI(ttk.Frame):
                              bordercolor=LIGHT_BLUE, lightcolor=LIGHTER_BLUE)
         self.style.configure('TEntry', foreground=DARK_BLUE, font=SECONDARY_FONT)
         self.style.configure('TButton', borderwith=2, font=SECONDARY_FONT, width=10)
-        self.style.map('C.TButton',
+        self.style.configure('TRadiobutton', font=OPTION_FONT)
+        self.style.configure('TCheckbutton', font=OPTION_FONT)
+        self.style.map('TButton',
                        foreground=[('disabled', 'gray'), ('!active', DARK_BLUE),
                                    ('pressed', LIGHT_BLUE), ('active', MAIN_BLUE)],
                        background=[('disabled', LIGHTER_BLUE), ('!active', LIGHT_BLUE),
                                    ('pressed', DARK_BLUE), ('active', LIGHT_BLUE)]
                        )
-        self.style.map("C.TRadiobutton",
+        self.style.map('TRadiobutton',
                        foreground=[('!active', DARK_BLUE), ('pressed', MAIN_BLUE), ('active', MAIN_BLUE)],
                        background=[('!active', LIGHT_BLUE), ('pressed', LIGHT_BLUE), ('active', LIGHT_BLUE)]
                        )
-        self.style.map("C.TCheckbutton",
+        self.style.map('TCheckbutton',
                        foreground=[('!active', DARK_BLUE), ('pressed', MAIN_BLUE), ('active', MAIN_BLUE)],
                        background=[('!active', LIGHT_BLUE), ('pressed', LIGHT_BLUE), ('active', LIGHT_BLUE)]
                        )

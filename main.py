@@ -5,7 +5,9 @@ from gui import GUI
 
 def main():
     root = TkinterDnD.Tk()
-    GUI(root)
+    gui = GUI(root)
+    gui.create_widgets()
+    gui.register_event_listeners()
     root.mainloop()
 
 
