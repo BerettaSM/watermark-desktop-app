@@ -117,7 +117,7 @@ class GUI(ttk.Frame):
         destiny_entry = ttk.Entry(self, textvariable=self.destiny_path, state='readonly', takefocus=0, width=55)
         destiny_entry.grid(row=1, column=1, columnspan=10, sticky=N + W + S + E, padx=5, pady=5)
 
-        self.target_image_button = ttk.Button(self, text='Choose target', style='C.TButton',
+        self.target_image_button = ttk.Button(self, text='Choose target image', style='C.TButton',
                                               command=self.target_browse_event)
         self.target_image_button.grid(row=2, column=0, sticky=W + E, padx=5, pady=5)
 
@@ -202,7 +202,7 @@ class GUI(ttk.Frame):
                                                onvalue=True, offvalue=False, style='C.TCheckbutton')
         self.miniature_check.grid(row=15, column=6, columnspan=5)
 
-        self.save_button = ttk.Button(self, text='Save image', style='C.TButton',
+        self.save_button = ttk.Button(self, text='No valid images selected', style='C.TButton',
                                       command=self.save_single_image_event)
         self.save_button.grid(row=16, column=6, columnspan=5, sticky=W + E)
         self.save_button.state(['disabled'])
@@ -374,8 +374,22 @@ class GUI(ttk.Frame):
         if both_paths_set:
             self.save_button.state(['!disabled'])
 
+            if batch:
+                updated_button_inner_text = 'Generate/save batch'
+
+            else:
+                updated_button_inner_text = 'Save image'
+
         else:
             self.save_button.state(['disabled'])
+
+            if batch:
+                updated_button_inner_text = 'No valid images inside target folder'
+
+            else:
+                updated_button_inner_text = 'No valid images selected'
+
+        self.save_button.configure(text=updated_button_inner_text)
 
         return both_paths_set
 
@@ -412,12 +426,14 @@ class GUI(ttk.Frame):
 
     def switch_batch_mode_layout(self, *args):
 
+        self.validate_paths()
+
         batch = self.batch_mode.get()
 
         if batch:
             # Batch layout
             self.target_image_button.configure(text='Choose target folder')
-            self.target_path.set(value='Choose a target folder')
+            self.target_path.set(value='Choose a folder, all images inside will be watermarked')
 
             self.target_title_label.grid_remove()
             self.preview_title_label.grid_remove()
