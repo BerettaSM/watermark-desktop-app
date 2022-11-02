@@ -13,7 +13,7 @@ from image_processing import get_resized_image, get_resized_photo_image, generat
 from image_processing import is_valid_image, folder_contains_images
 from images import IMAGE_BG, IMAGE_FG, WATERMARK_ICON, TRANSPARENT
 from utils import get_user_desktop, remove_curly_braces
-from utils import invalid_image_messagebox, invalid_dir_messagebox, processed_images_messagebox
+from utils import invalid_image_messagebox, invalid_dir_messagebox, processed_images_messagebox, about_messagebox
 
 FONT = 'Playball'
 TITLE_FONT = (FONT, 24)
@@ -36,6 +36,16 @@ class GUI(ttk.Frame):
         ico = ImageTk.PhotoImage(Image.open(io.BytesIO(WATERMARK_ICON)))
         self.master.wm_iconphoto(False, ico)
         self.master.resizable(width=False, height=False)
+
+        my_menu = tk.Menu(self.master)
+        self.master.config(menu=my_menu)
+        self.master.option_add('*tearOff', False)
+        file_menu = tk.Menu(my_menu)
+        my_menu.add_cascade(label='File', menu=file_menu)
+        help_menu = tk.Menu(my_menu)
+        my_menu.add_cascade(label='Help', menu=help_menu)
+        file_menu.add_command(label='Quit', command=self.master.quit)
+        help_menu.add_command(label='About', command=about_messagebox)
 
         self.grid(row=0, column=0)
         self.configure(padding="40")
