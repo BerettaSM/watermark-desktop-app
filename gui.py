@@ -89,6 +89,8 @@ class GUI(ttk.Frame):
 
         self.should_miniaturize = None
         self.miniature_check = None
+        self.opacity = None
+        self.opacity_check = None
         self.save_button = None
 
     def create_widgets(self):
@@ -213,7 +215,13 @@ class GUI(ttk.Frame):
         self.miniature_check = ttk.Checkbutton(self.options_panel, text='Miniaturize watermark',
                                                onvalue=True, offvalue=False,
                                                variable=self.should_miniaturize, style='TCheckbutton')
-        self.miniature_check.grid(row=3, column=0, columnspan=5, ipady=20)
+        self.miniature_check.grid(row=3, column=0, columnspan=3, pady=15, sticky=W+S)
+
+        self.opacity = tk.BooleanVar(value=False)
+        self.opacity_check = ttk.Checkbutton(self.options_panel, text='Half opacity',
+                                             onvalue=True, offvalue=False,
+                                             variable=self.opacity, style='TCheckbutton')
+        self.opacity_check.grid(row=3, column=3, columnspan=2, pady=15, sticky=E+S)
 
         self.save_button = ttk.Button(self.options_panel, text='No valid images selected', style='TButton',
                                       command=self.save_single_image_event, width=21)
@@ -236,6 +244,7 @@ class GUI(ttk.Frame):
 
         self.wm_position.trace('w', self.validate_state)
         self.should_miniaturize.trace('w', self.validate_state)
+        self.opacity.trace('w', self.validate_state)
 
         self.batch_mode.trace('w', self.switch_batch_mode_layout)
 
@@ -353,9 +362,11 @@ class GUI(ttk.Frame):
         watermark_image = Image.open(self.watermark_image_path.get())
         position = self.wm_position.get()
         should_miniaturize = self.should_miniaturize.get()
+        opacity = self.opacity.get()
 
         self.end_result = generate_watermarked_image(target_image, watermark_image,
-                                                     position, should_miniaturize)
+                                                     position, should_miniaturize,
+                                                     opacity)
 
         self.preview_img_load()
 
@@ -438,6 +449,7 @@ class GUI(ttk.Frame):
         watermark_image = Image.open(self.watermark_image_path.get())
         position = self.wm_position.get()
         should_miniaturize = self.should_miniaturize.get()
+        opacity = self.opacity.get()
 
         if not os.path.isdir(dump_folder):
             os.makedirs(dump_folder)
@@ -463,7 +475,8 @@ class GUI(ttk.Frame):
             target_image = Image.open(full_file_path)
 
             watermarked_image = generate_watermarked_image(target_image, watermark_image,
-                                                           position, should_miniaturize)
+                                                           position, should_miniaturize,
+                                                           opacity)
 
             filename = os.path.basename(full_file_path)
             new_filename = 'watermarked_' + filename

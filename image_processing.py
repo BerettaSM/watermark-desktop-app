@@ -82,7 +82,8 @@ def get_resized_photo_image(path: str = None, bytes_: bytes = None):
 def generate_watermarked_image(target: Image,
                                watermark: Image,
                                watermark_position: str,
-                               miniature: bool = False):
+                               miniature: bool = False,
+                               half_opacity: bool = False):
 
     position = Position(watermark_position)
     target_image = target.copy()
@@ -114,6 +115,9 @@ def generate_watermarked_image(target: Image,
 
     elif position == Position.TOP_RIGHT:
         delta_height = 0
+
+    if half_opacity:
+        resized_watermark.putalpha(127)
 
     try:
         # Image has transparency data

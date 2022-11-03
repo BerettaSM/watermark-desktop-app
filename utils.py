@@ -48,12 +48,13 @@ def invalid_dir_messagebox():
 
 
 def open_github():
+
     webbrowser.open('https://github.com/BerettaSM')
 
 
 def processed_images_messagebox(n: int):
 
-    messagebox.showinfo(title='Done', message=f'Result: {n} images converted.')
+    messagebox.showinfo(title='Done', message=f'Result: {n} images watermarked.')
 
 
 def remove_curly_braces(path: str):
