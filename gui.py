@@ -37,16 +37,6 @@ class GUI(ttk.Frame):
         self.master.wm_iconphoto(False, ico)
         self.master.resizable(width=False, height=False)
 
-        my_menu = tk.Menu(self.master)
-        self.master.config(menu=my_menu)
-        self.master.option_add('*tearOff', False)
-        file_menu = tk.Menu(my_menu)
-        my_menu.add_cascade(label='File', menu=file_menu)
-        help_menu = tk.Menu(my_menu)
-        my_menu.add_cascade(label='Help', menu=help_menu)
-        file_menu.add_command(label='Quit', command=self.master.quit)
-        help_menu.add_command(label='About', command=about_messagebox)
-
         self.grid(row=0, column=0)
         self.configure(padding="40")
 
@@ -102,6 +92,16 @@ class GUI(ttk.Frame):
         self.save_button = None
 
     def create_widgets(self):
+
+        my_menu = tk.Menu(self.master)
+        self.master.config(menu=my_menu)
+        self.master.option_add('*tearOff', False)
+        file_menu = tk.Menu(my_menu)
+        my_menu.add_cascade(label='File', menu=file_menu)
+        help_menu = tk.Menu(my_menu)
+        my_menu.add_cascade(label='Help', menu=help_menu)
+        file_menu.add_command(label='Quit', command=self.master.quit)
+        help_menu.add_command(label='About', command=about_messagebox)
 
         self.loading_bar = ttk.Progressbar(self, orient=HORIZONTAL, length=200, mode='determinate')
         self.loading_bar.grid(row=0, column=0, columnspan=10, sticky=N + E + S + W, padx=4, ipady=5)
